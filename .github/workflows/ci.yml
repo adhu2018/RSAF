@@ -41,4 +41,4 @@ jobs:
         with:
           name: beta
           if-no-files-found: ignore
-          path: ${{ github.workspace }}/app/build/outputs/apk/*/*/*.apk
+          path: ${{ github.workspace }}/app/build/outputs/apk/*/*.apk
