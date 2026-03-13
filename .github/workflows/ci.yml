@@ -8,8 +8,6 @@ jobs:
   build-app:
     name: Build app
     runs-on: ubuntu-latest
-    env:
-      androidArch: x86_64
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -32,55 +30,15 @@ jobs:
           cache-dependency-path: rcbridge/go.sum
           go-version-file: rcbridge/go.mod
 
-      - name: Get NDK version
-        id: get_version
-        shell: bash
-        run: |
-          sed -nr \
-              -e 's/^\s*(compileSdk)\s*(=)\s([0-9]+).*$/\1\2\3/p' \
-              -e 's/^\s*(ndkVersion)\s*(=)\s"(.+)".*$/\1\2\3/p' \
-              app/build.gradle.kts \
-              >> "${GITHUB_OUTPUT}"
-
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-
-      - name: AVD cache
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
-        id: avd-cache
-        with:
-          path: |
-            ~/.android/avd/*
-            ~/.android/adb*
-          key: avd-${{ steps.get_version.outputs.compileSdk }}-${{ env.androidArch }}
-
-      - name: Create AVD snapshot
-        if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: reactivecircus/android-emulator-runner@b530d96654c385303d652368551fb075bc2f0b6b # v2.35.0
-        with:
-          # TODO: Remove after Google publishes AOSP-based image.
-          target: google_apis
-          api-level: ${{ steps.get_version.outputs.compileSdk }}
-          arch: ${{ env.androidArch }}
-          ndk: ${{ steps.get_version.outputs.ndkVersion }}
-          force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          disable-animations: false
-          script: echo "Generated AVD snapshot for caching."
-
       - name: Build and test
-        uses: reactivecircus/android-emulator-runner@b530d96654c385303d652368551fb075bc2f0b6b # v2.35.0
+        run: |
+          echo "开始构建"
+          chmod +x gradlew
+          ./gradlew assembleapprelease --build-cache --parallel --no-daemon --warning-mode all
+
+      - name: Upload App To Artifact
+        uses: actions/upload-artifact@v4
         with:
-          # TODO: Remove after Google publishes AOSP-based image.
-          target: google_apis
-          api-level: ${{ steps.get_version.outputs.compileSdk }}
-          arch: ${{ env.androidArch }}
-          ndk: ${{ steps.get_version.outputs.ndkVersion }}
-          force-avd-creation: false
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          disable-animations: true
-          # Debug build only since release builds require a signing key
-          script: ./gradlew --no-daemon build connectedDebugAndroidTest -x assembleRelease
+          name: beta
+          if-no-files-found: ignore
+          path: ${{ github.workspace }}/app/build/outputs/apk/*/*/*.apk
