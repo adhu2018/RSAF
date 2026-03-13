@@ -34,7 +34,7 @@ jobs:
         run: |
           echo "开始构建"
           chmod +x gradlew
-          ./gradlew assembleapprelease --build-cache --parallel --no-daemon --warning-mode all
+          ./gradlew assembleDebug --build-cache --parallel --no-daemon --warning-mode all
 
       - name: Upload App To Artifact
         uses: actions/upload-artifact@v4
