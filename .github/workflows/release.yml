@@ -5,6 +5,7 @@ on:
     #  - ci
     tags:
       - 'v*'
+  workflow_dispatch:
 jobs:
   create_release:
     name: Create Github release
